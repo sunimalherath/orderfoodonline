@@ -40,7 +40,7 @@ func (a *apiServer) RegisterRoutes() http.Handler {
 
 	mux.HandleFunc("/health", a.HealthCheck)
 
-	return mux
+	return a.configureCorsMiddleware(mux)
 }
 
 func (a *apiServer) HealthCheck(w http.ResponseWriter, r *http.Request) {
@@ -48,4 +48,17 @@ func (a *apiServer) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.logger.Error(err.Error())
 	}
+}
+
+func (a *apiServer) configureCorsMiddleware(h http.Handler) http.Handler {
+	hf := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-CSRF-Token")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		h.ServeHTTP(w, r)
+	})
+
+	return hf
 }
