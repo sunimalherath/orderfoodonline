@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/sunimalherath/orderfoodonline/internal/app/repositories"
+	"github.com/sunimalherath/orderfoodonline/internal/app/services"
 	"github.com/sunimalherath/orderfoodonline/internal/config"
 	"github.com/sunimalherath/orderfoodonline/internal/server"
 )
@@ -15,13 +17,22 @@ func main() {
 
 	cfg := config.Load()
 
-	api := server.NewAPIServer(server.WithLogger(logger))
+	productCache, err := config.LoadProducts()
+	if err != nil {
+		logger.Error(err.Error())
+	}
+
+	productsRepo := repositories.NewProductsRepo(productCache)
+
+	productSvc := services.NewProductService(productsRepo)
+
+	api := server.NewAPIServer(productSvc, server.WithLogger(logger))
 
 	httpHandler := api.RegisterRoutes()
 
 	server := createHTTPServer(httpHandler, cfg.Server.Port)
 
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	if err != nil {
 		logger.Error(fmt.Sprintf("http server error: %s", err.Error()))
 
