@@ -10,8 +10,6 @@ import (
 	"github.com/sunimalherath/orderfoodonline/internal/core/entities"
 )
 
-var cacheMutex sync.RWMutex
-
 type productsRepo struct {
 	prodCache map[string]entities.Product
 	cm        sync.RWMutex
@@ -45,7 +43,7 @@ func (p *productsRepo) GetProductByID(productID int64) (*entities.Product, error
 	p.cm.RUnlock()
 
 	if !found {
-		return nil, constants.ErrProductNotFount
+		return nil, constants.ErrProductNotFound
 	}
 
 	return &prod, nil

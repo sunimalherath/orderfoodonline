@@ -6,8 +6,10 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/sunimalherath/orderfoodonline/internal/core/adapters"
+	"github.com/sunimalherath/orderfoodonline/internal/core/constants"
 )
 
 type apiServer struct {
@@ -44,6 +46,7 @@ func (a *apiServer) RegisterRoutes() http.Handler {
 
 	mux.HandleFunc("/health", a.HealthCheck)
 	mux.HandleFunc("/product", a.ListProducts)
+	mux.HandleFunc("/product/{productId}", a.FindProductByID)
 
 	return a.configureCorsMiddleware(mux)
 }
@@ -73,6 +76,48 @@ func (a *apiServer) ListProducts(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	_, err = w.Write(jsonProds)
+	if err != nil {
+		a.logger.Error(err.Error())
+
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (a *apiServer) FindProductByID(w http.ResponseWriter, r *http.Request) {
+	prodID, err := strconv.Atoi(r.PathValue("productId"))
+	if err != nil {
+		a.logger.Error(err.Error())
+
+		http.Error(w, err.Error(), http.StatusBadRequest)
+
+		return
+	}
+
+	product, err := a.prodSvc.FindProductByID(int64(prodID))
+	if err != nil {
+		a.logger.Error(err.Error())
+
+		http.Error(w, err.Error(), http.StatusNotFound)
+	}
+
+	if product == nil {
+		a.logger.Warn("product not found for product Id", slog.Int("productId", prodID))
+
+		http.Error(w, constants.ErrProductNotFound.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/type")
+
+	jsonProd, err := json.Marshal(product)
+	if err != nil {
+		a.logger.Error(err.Error())
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+	_, err = w.Write(jsonProd)
 	if err != nil {
 		a.logger.Error(err.Error())
 
