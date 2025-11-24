@@ -61,10 +61,8 @@ func (a *apiServer) RegisterRoutes() http.Handler {
 }
 
 func (a *apiServer) HealthCheck(w http.ResponseWriter, r *http.Request) {
-	_, err := w.Write([]byte("in good health"))
-	if err != nil {
-		a.logger.Error(err.Error())
-	}
+	a.logger.Info(constants.CheckHealth)
+	a.writeJSONResponse(w, http.StatusOK, constants.SUCCESS, constants.GoodHealth, nil)
 }
 
 func (a *apiServer) ListProducts(w http.ResponseWriter, r *http.Request) {

@@ -27,7 +27,10 @@ const (
 	ValidationFailed = "order validation failed"
 	OrderFailed      = "failed place the order"
 	OrderPlaced      = "order placed"
+	GoodHealth       = "health ok"
 )
+
+const CheckHealth = "performing health check"
 
 // auth messages
 const (
