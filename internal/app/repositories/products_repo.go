@@ -43,18 +43,19 @@ func (p *productsRepo) GetProducts(ctx context.Context) ([]entities.Product, err
 func (p *productsRepo) GetProductByID(ctx context.Context, productID int64) (*entities.Product, error) {
 	strProdID := strconv.FormatInt(productID, 10)
 
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
-		p.cm.RLock()
-		prod, found := p.prodCache[strProdID]
-		p.cm.RUnlock()
-
-		if !found {
-			return nil, constants.ErrProductNotFound
-		}
-
-		return &prod, nil
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
+
+	p.cm.RLock()
+
+	prod, found := p.prodCache[strProdID]
+
+	p.cm.RUnlock()
+
+	if !found {
+		return nil, constants.ErrProductNotFound
+	}
+
+	return &prod, nil
 }
