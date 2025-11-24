@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/sunimalherath/orderfoodonline/internal/app/utils"
+	"github.com/sunimalherath/orderfoodonline/internal/core/constants"
 	"github.com/sunimalherath/orderfoodonline/internal/core/entities"
 )
 
@@ -20,13 +21,13 @@ type ServerConfig struct {
 func Load() *Config {
 	return &Config{
 		ServerConfig{
-			Port: utils.GetEnvVar("PORT", "8080"),
+			Port: utils.GetEnvVar(constants.PORT, "8080"),
 		},
 	}
 }
 
 func LoadProducts() (map[string]entities.Product, error) {
-	prodData, err := os.ReadFile("./internal/config/data/products.json")
+	prodData, err := os.ReadFile(constants.ProductsFilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -38,4 +39,12 @@ func LoadProducts() (map[string]entities.Product, error) {
 	}
 
 	return prodCache, nil
+}
+
+func GetCouponFilePaths() []string {
+	return []string{
+		constants.CouponFilePath1,
+		constants.CouponFilePath2,
+		constants.CouponFilePath3,
+	}
 }

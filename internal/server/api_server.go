@@ -2,19 +2,25 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
 
+	"github.com/sunimalherath/orderfoodonline/internal/app/utils"
 	"github.com/sunimalherath/orderfoodonline/internal/core/adapters"
 	"github.com/sunimalherath/orderfoodonline/internal/core/constants"
+	"github.com/sunimalherath/orderfoodonline/internal/core/entities"
 )
 
 type apiServer struct {
-	prodSvc adapters.ProductService
-	logger  *slog.Logger
+	prodSvc  adapters.ProductService
+	orderSvc adapters.OrderService
+	apiKey   string
+	logger   *slog.Logger
 }
 
 type APIServerOptions func(*apiServer)
@@ -25,9 +31,11 @@ func WithLogger(logger *slog.Logger) APIServerOptions {
 	}
 }
 
-func NewAPIServer(prodSvc adapters.ProductService, opts ...APIServerOptions) adapters.APIServer {
+func NewAPIServer(prodSvc adapters.ProductService, orderSvc adapters.OrderService, opts ...APIServerOptions) adapters.APIServer {
 	apiServer := &apiServer{
-		prodSvc: prodSvc,
+		prodSvc:  prodSvc,
+		orderSvc: orderSvc,
+		apiKey:   utils.GetEnvVar(constants.APIKey, "apitest"),
 	}
 
 	for _, opt := range opts {
@@ -44,11 +52,12 @@ func NewAPIServer(prodSvc adapters.ProductService, opts ...APIServerOptions) ada
 func (a *apiServer) RegisterRoutes() http.Handler {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/health", a.HealthCheck)
-	mux.HandleFunc("/product", a.ListProducts)
-	mux.HandleFunc("/product/{productId}", a.FindProductByID)
+	mux.HandleFunc("GET /health", a.HealthCheck)
+	mux.HandleFunc("GET /product", a.ListProducts)
+	mux.HandleFunc("GET /product/{productId}", a.FindProductByID)
+	mux.HandleFunc("POST /order", a.PlaceAnOrder)
 
-	return a.configureCorsMiddleware(mux)
+	return a.configureCorsMiddleware(a.authAPIkeyMiddleware(mux))
 }
 
 func (a *apiServer) HealthCheck(w http.ResponseWriter, r *http.Request) {
@@ -59,70 +68,91 @@ func (a *apiServer) HealthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *apiServer) ListProducts(w http.ResponseWriter, r *http.Request) {
-	products, err := a.prodSvc.ListProducts()
-	if err != nil {
-		a.logger.Error(err.Error())
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), constants.ActiveDuration)
+	defer cancel()
 
-	w.Header().Set("Content-Type", "application/json")
-
-	jsonProds, err := json.Marshal(products)
+	products, err := a.prodSvc.ListProducts(ctx)
 	if err != nil {
 		a.logger.Error(err.Error())
 
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		a.writeJSONResponse(w, http.StatusInternalServerError, constants.FAILURE, constants.RetrievalFailed, nil)
+
+		return
+
 	}
 
-	w.WriteHeader(http.StatusOK)
-
-	_, err = w.Write(jsonProds)
-	if err != nil {
-		a.logger.Error(err.Error())
-
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	a.writeJSONResponse(w, http.StatusOK, constants.SUCCESS, constants.ProductsRcvd, products)
 }
 
 func (a *apiServer) FindProductByID(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(context.Background(), constants.ActiveDuration)
+	defer cancel()
+
 	prodID, err := strconv.Atoi(r.PathValue("productId"))
 	if err != nil {
 		a.logger.Error(err.Error())
 
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		a.writeJSONResponse(w, http.StatusBadRequest, constants.FAILURE, constants.InvalidProdID, nil)
 
 		return
 	}
 
-	product, err := a.prodSvc.FindProductByID(int64(prodID))
+	product, err := a.prodSvc.FindProductByID(ctx, int64(prodID))
 	if err != nil {
 		a.logger.Error(err.Error())
 
-		http.Error(w, err.Error(), http.StatusNotFound)
+		a.writeJSONResponse(w, http.StatusNotFound, constants.FAILURE, constants.ProdNotFound, nil)
+
+		return
 	}
 
 	if product == nil {
 		a.logger.Warn("product not found for product Id", slog.Int("productId", prodID))
 
-		http.Error(w, constants.ErrProductNotFound.Error(), http.StatusInternalServerError)
+		msg := fmt.Sprintf("product not for product ID: %d", prodID)
+		a.writeJSONResponse(w, http.StatusInternalServerError, constants.FAILURE, msg, nil)
 
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/type")
+	msg := fmt.Sprintf("product retrieved for productId: %d", prodID)
 
-	jsonProd, err := json.Marshal(product)
+	a.writeJSONResponse(w, http.StatusOK, constants.SUCCESS, msg, product)
+}
+
+func (a *apiServer) PlaceAnOrder(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(context.Background(), constants.ActiveDuration)
+	defer cancel()
+
+	var orderReq entities.OrderReq
+
+	err := json.NewDecoder(r.Body).Decode(&orderReq)
 	if err != nil {
 		a.logger.Error(err.Error())
+
+		a.writeJSONResponse(w, http.StatusBadRequest, constants.FAILURE, constants.InvalidRequest, nil)
+
+		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	if err := orderReq.Validate(); err != nil {
+		a.logger.Error(err.Error())
 
-	_, err = w.Write(jsonProd)
+		a.writeJSONResponse(w, http.StatusUnprocessableEntity, constants.FAILURE, constants.ValidationFailed, nil)
+
+		return
+	}
+
+	order, err := a.orderSvc.PlaceAnOrder(ctx, orderReq)
 	if err != nil {
 		a.logger.Error(err.Error())
 
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		a.writeJSONResponse(w, getStatusCode(err), constants.FAILURE, err.Error(), nil)
+
+		return
 	}
+
+	a.writeJSONResponse(w, http.StatusOK, constants.SUCCESS, constants.OrderPlaced, order)
 }
 
 func (a *apiServer) configureCorsMiddleware(h http.Handler) http.Handler {
@@ -136,4 +166,62 @@ func (a *apiServer) configureCorsMiddleware(h http.Handler) http.Handler {
 	})
 
 	return hf
+}
+
+func (a *apiServer) authAPIkeyMiddleware(h http.Handler) http.Handler {
+	hf := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		key := r.Header.Get("api_key")
+
+		if key == "" {
+			a.logger.Error(constants.MissingAPIkey)
+			a.writeJSONResponse(w, http.StatusUnauthorized, constants.FAILURE, constants.MissingAPIkey, nil)
+
+			return
+		}
+
+		if key != a.apiKey {
+			a.logger.Error(constants.InvalidAPIkey)
+			a.writeJSONResponse(w, http.StatusBadRequest, constants.FAILURE, constants.InvalidAPIkey, nil)
+
+			return
+		}
+
+		h.ServeHTTP(w, r)
+	})
+
+	return hf
+}
+
+func (a *apiServer) writeJSONResponse(w http.ResponseWriter, status int, respType, message string, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	res := entities.APIResponse{
+		Code:    status,
+		Message: message,
+		Type:    respType,
+	}
+
+	if data != nil {
+		res.Data = data
+	}
+
+	err := json.NewEncoder(w).Encode(res)
+	if err != nil {
+		a.logger.Error(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+func getStatusCode(err error) int {
+	switch err {
+	case constants.ErrInvalidPromoCodeLength:
+		return http.StatusUnprocessableEntity
+	case constants.ErrInvalidPromoCode:
+		return http.StatusBadRequest
+	case constants.ErrProductNotFound:
+		return http.StatusBadRequest
+	default:
+		return http.StatusInternalServerError
+	}
 }

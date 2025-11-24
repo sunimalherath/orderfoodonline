@@ -2,6 +2,7 @@
 package repositories
 
 import (
+	"context"
 	"strconv"
 	"sync"
 
@@ -21,30 +22,40 @@ func NewProductsRepo(prodCache map[string]entities.Product) adapters.ProductsRep
 	}
 }
 
-func (p *productsRepo) GetProducts() []entities.Product {
+func (p *productsRepo) GetProducts(ctx context.Context) []entities.Product {
 	products := []entities.Product{}
 
-	p.cm.RLock()
+	select {
+	case <-ctx.Done():
+		return products
+	default:
+		p.cm.RLock()
 
-	for _, prod := range p.prodCache {
-		products = append(products, prod)
+		for _, prod := range p.prodCache {
+			products = append(products, prod)
+		}
+
+		p.cm.RUnlock()
+
+		return products
 	}
-
-	p.cm.RUnlock()
-
-	return products
 }
 
-func (p *productsRepo) GetProductByID(productID int64) (*entities.Product, error) {
+func (p *productsRepo) GetProductByID(ctx context.Context, productID int64) (*entities.Product, error) {
 	strProdID := strconv.FormatInt(productID, 10)
 
-	p.cm.RLock()
-	prod, found := p.prodCache[strProdID]
-	p.cm.RUnlock()
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+		p.cm.RLock()
+		prod, found := p.prodCache[strProdID]
+		p.cm.RUnlock()
 
-	if !found {
-		return nil, constants.ErrProductNotFound
+		if !found {
+			return nil, constants.ErrProductNotFound
+		}
+
+		return &prod, nil
 	}
-
-	return &prod, nil
 }
