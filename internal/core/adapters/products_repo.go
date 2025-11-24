@@ -8,6 +8,6 @@ import (
 )
 
 type ProductsRepo interface {
-	GetProducts(ctx context.Context) []entities.Product
+	GetProducts(ctx context.Context) ([]entities.Product, error)
 	GetProductByID(ctx context.Context, productID int64) (*entities.Product, error)
 }

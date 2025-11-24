@@ -20,7 +20,10 @@ func NewProductService(prodRepo adapters.ProductsRepo) adapters.ProductService {
 }
 
 func (p *productSvc) ListProducts(ctx context.Context) ([]entities.Product, error) {
-	products := p.prodRepo.GetProducts(ctx)
+	products, err := p.prodRepo.GetProducts(ctx)
+	if err != nil {
+		return products, err
+	}
 
 	if len(products) == 0 {
 		return nil, constants.ErrNoProductsAvailable

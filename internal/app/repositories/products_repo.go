@@ -22,23 +22,22 @@ func NewProductsRepo(prodCache map[string]entities.Product) adapters.ProductsRep
 	}
 }
 
-func (p *productsRepo) GetProducts(ctx context.Context) []entities.Product {
+func (p *productsRepo) GetProducts(ctx context.Context) ([]entities.Product, error) {
 	products := []entities.Product{}
 
-	select {
-	case <-ctx.Done():
-		return products
-	default:
-		p.cm.RLock()
-
-		for _, prod := range p.prodCache {
-			products = append(products, prod)
-		}
-
-		p.cm.RUnlock()
-
-		return products
+	if err := ctx.Err(); err != nil {
+		return products, err
 	}
+
+	p.cm.RLock()
+
+	for _, prod := range p.prodCache {
+		products = append(products, prod)
+	}
+
+	p.cm.RUnlock()
+
+	return products, nil
 }
 
 func (p *productsRepo) GetProductByID(ctx context.Context, productID int64) (*entities.Product, error) {
