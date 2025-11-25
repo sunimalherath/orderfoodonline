@@ -2,8 +2,10 @@
 package config
 
 import (
+	"bufio"
 	"encoding/json"
 	"os"
+	"strings"
 
 	"github.com/sunimalherath/orderfoodonline/internal/app/utils"
 	"github.com/sunimalherath/orderfoodonline/internal/core/constants"
@@ -19,6 +21,8 @@ type ServerConfig struct {
 }
 
 func Load() *Config {
+	loadEnvFile(constants.EnvFilePath)
+
 	return &Config{
 		ServerConfig{
 			Port: utils.GetEnvVar(constants.PORT, "8080"),
@@ -46,5 +50,32 @@ func GetCouponFilePaths() []string {
 		constants.CouponFilePath1,
 		constants.CouponFilePath2,
 		constants.CouponFilePath3,
+	}
+}
+
+func loadEnvFile(filename string) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return
+	}
+
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		parts := strings.SplitN(line, "=", 2)
+
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+
+			_ = os.Setenv(key, value)
+		}
 	}
 }

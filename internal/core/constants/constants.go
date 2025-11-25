@@ -59,6 +59,7 @@ const (
 	CouponBase1  = "couponbase1"
 	CouponBase2  = "couponbase2"
 	CouponBase3  = "couponbase3"
+	EnvFile      = ".env"
 )
 
 var (
@@ -66,4 +67,5 @@ var (
 	CouponFilePath1  = fmt.Sprintf("%s/%s", DataDir, CouponBase1)
 	CouponFilePath2  = fmt.Sprintf("%s/%s", DataDir, CouponBase2)
 	CouponFilePath3  = fmt.Sprintf("%s/%s", DataDir, CouponBase3)
+	EnvFilePath      = fmt.Sprintf("%s/%s", DataDir, EnvFile)
 )
