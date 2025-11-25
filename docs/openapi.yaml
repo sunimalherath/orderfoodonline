@@ -1,0 +1,165 @@
+openapi: 3.1.0
+info:
+  title: Order Food Online - OpenAPI 3.1
+  description: |-
+    This is a solution for Advanced Challege of the kart-challenge of the Oolio Group
+
+    Use API key `apitest`
+
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080 
+tags:
+  - name: product
+    description: Everything about products
+  - name: order
+    description: Place Order
+paths:
+  /product:
+    get:
+      tags:
+        - product
+      summary: List products
+      description: Get all products available for order
+      operationId: listProducts
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/internal/core/entities/Product'
+  /product/{productId}:
+    get:
+      tags:
+        - product
+      summary: Find product by ID
+      description: Returns a single product
+      operationId: getProduct
+      parameters:
+        - name: productId
+          in: path
+          description: ID of product to return
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/internal/core/entities/Product'
+        '400':
+          description: Invalid ID supplied
+        '404':
+          description: Product not found
+  /order:
+    post:
+      tags:
+        - order
+      summary: Place an order
+      description: Place a new order in the store
+      operationId: placeOrder
+      security:
+        - api_key: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/internal/core/entities/OrderReq'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/internal/core/entities/Order'
+        '400':
+          description: Invalid input
+        '422':
+          description: Validation exception
+components:
+  schemas:
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          examples: ["00000000-0000-0000-0000-000000000000"]
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: string
+                description: ID of the product
+              quantity:
+                type: integer
+                description: Item count
+        products:
+          type: array
+          items:
+            $ref: '#/internal/core/entities/Product'
+    OrderReq:
+      type: object
+      description: Place a new order
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: string
+                description: ID of the product (required)
+              quantity:
+                type: integer
+                description: Item count (required)
+            required:
+              - productId
+              - quantity
+        couponCode:
+          type: string
+          description: Optional promo code applied to the order
+      required:
+        - items
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          examples: ["10"]
+        category:
+          type: string
+          examples: [Waffle]
+        name:
+          type: string
+          examples: ["Chicken Waffle"]
+        price:
+          type: number
+          format: float
+          description: Selling price
+    ApiResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+        type:
+          type: string
+        data:
+          type: any 
+  securitySchemes:
+    api_key:
+      type: apiKey
+      name: api_key
+      in: header
+
+
