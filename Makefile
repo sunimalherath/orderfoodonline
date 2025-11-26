@@ -5,7 +5,18 @@ build:
 	
 	go build -o bin/api cmd/api/main.go
 
-# Run the application
 run:
 	@echo "Running the API..."
 	go run cmd/api/main.go
+
+test:
+	@echo "Running unit tests..."
+	go test -v /home/sunio/Developer/Projects/Go/Oolio/orderfoodonline/internal/server
+
+docker-up: 
+	@echo "Starting services with Docker..."
+	docker-compose up --build -d
+
+docker-down: 
+	@echo "Stopping services..."
+	docker-compose down
