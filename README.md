@@ -18,6 +18,9 @@ API Schema for the solution can be found in [here.](https://github.com/sunimalhe
 
 ## Quick Start
 
+> [!NOTE]
+> Replace the couponbase1, couponbase2, and couponbase3 files with their larger couterparts.  
+
 Start the API server:
 
 `make run`
