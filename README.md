@@ -7,8 +7,11 @@ API Schema for the solution can be found in [here.](https://github.com/sunimalhe
 ## API Endpoints
 
 `GET /health`                 # Perfom health check.
+
 `GET /product`                # List all the products.
+
 `GET /product/{productId}`    # List product details for the provided `productId`.
+
 `POST /order`                 # Place an order.
 
 
