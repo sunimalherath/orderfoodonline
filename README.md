@@ -1,6 +1,6 @@
 # Order Food Online API
 
-This is a solution for the "Advance Challenge" of the Oolio group's back-end challenge. 
+This is a solution for the "Advanced Challenge" of the Oolio group's back-end challenge. 
 
 The description of the challenge can be found in [here.](https://github.com/oolio-group/kart-challenge/tree/advanced-challenge/backend-challenge)
 API Schema for the solution can be found in [here.](https://github.com/sunimalherath/orderfoodonline/blob/main/docs/openapi.yaml) 
