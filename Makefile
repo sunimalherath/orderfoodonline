@@ -11,7 +11,7 @@ run:
 
 test:
 	@echo "Running unit tests..."
-	go test -v /home/sunio/Developer/Projects/Go/Oolio/orderfoodonline/internal/server
+	go test -v ./internal/server
 
 docker-up: 
 	@echo "Starting services with Docker..."
