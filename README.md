@@ -6,13 +6,13 @@ The description of the challenge can be found in [here.](https://github.com/ooli
 API Schema for the solution can be found in [here.](https://github.com/sunimalherath/orderfoodonline/blob/main/docs/openapi.yaml) 
 ## API Endpoints
 
-`GET /health`                 # Perfom health check.
+`GET /health`                 - Perfom health check.
 
-`GET /product`                # List all the products.
+`GET /product`                - List all the products.
 
-`GET /product/{productId}`    # List product details for the provided `productId`.
+`GET /product/{productId}`    - List product details for the provided `productId`.
 
-`POST /order`                 # Place an order.
+`POST /order`                 - Place an order.
 
 
 ## Prerequisites
